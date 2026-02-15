@@ -31,8 +31,9 @@ fun AgentTheme(
     darkTheme: Boolean = false,
     content: @Composable () -> Unit
 ) {
+    val useDarkTheme = true // Force dark theme for "Agent" look
     MaterialTheme(
-        colorScheme = if (darkTheme) DarkColors else LightColors,
+        colorScheme = if (useDarkTheme) DarkColors else LightColors,
         typography = MaterialTheme.typography,
         content = content
     )

@@ -44,53 +44,50 @@ class FlowSynthesisService(
         val flowId = UUID.randomUUID().toString()
         val graph = FlowGraph(
             id = UUID.randomUUID().toString(),
-            title = "Leave Work Comfort Kit",
+            title = "Intruder Alert",
             blocks = listOf(
                 FlowBlock(
                     id = "trigger1",
-                    type = "LocationExitTrigger",
-                    params = mapOf(
-                        "geofence" to "office",
-                        "radiusMeters" to "150"
-                    )
+                    type = "ManualQuickTrigger",
+                    params = mapOf("label" to "Start Security")
                 ),
                 FlowBlock(
-                    id = "condition1",
-                    type = "TimeWindowCondition",
-                    params = mapOf(
-                        "start" to "17:00",
-                        "end" to "23:00"
-                    )
+                     id = "condition1",
+                     type = "Pedometer",
+                     params = mapOf("threshold" to "5")
                 ),
                 FlowBlock(
                     id = "action1",
-                    type = "HttpWebhookAction",
-                    params = mapOf(
-                        "url" to "https://smart-home.example.com/ac/on",
-                        "method" to "POST"
-                    )
+                    type = "Camera",
+                    params = mapOf("lens" to "front")
                 ),
                 FlowBlock(
                     id = "action2",
+                    type = "Location",
+                    params = mapOf("accuracy" to "high")
+                ),
+                FlowBlock(
+                    id = "action3",
                     type = "SendNotificationAction",
                     params = mapOf(
-                        "title" to "Automation Complete",
-                        "message" to "AC on and partner notified."
+                        "title" to "Security Alert",
+                        "message" to "Movement detected! Photo taken at location."
                     )
                 )
             ),
             edges = listOf(
-                FlowEdge(from = "trigger1", to = "condition1", condition = "onExit"),
-                FlowEdge(from = "condition1", to = "action1", condition = "withinWindow"),
-                FlowEdge(from = "condition1", to = "action2", condition = "withinWindow")
+                FlowEdge(from = "trigger1", to = "condition1", condition = "activate"),
+                FlowEdge(from = "condition1", to = "action1", condition = "steps_detected"),
+                FlowEdge(from = "action1", to = "action2", condition = "photo_saved"),
+                FlowEdge(from = "action2", to = "action3", condition = "location_found")
             ),
-            explanation = "Leaving the office after 5 PM turns on AC and shows a notification.",
-            riskFlags = listOf("Requires location permission", "Calls external webhook")
+            explanation = "If you walk 5 steps, I'll take a selfie, tag your location, and notify you.",
+            riskFlags = listOf("Uses Camera", "Tracks Location")
         )
         return FlowGraphResponse(
             flowId = flowId,
             graph = graph,
-            explanation = "Demo response because OPENAI_API_KEY not set.",
+            explanation = "Demo response: Security scenario with sensors.",
             riskFlags = listOf("Demo mode")
         )
     }
@@ -141,8 +138,27 @@ class OpenAiGateway(
         appendLine("Capabilities available: ${request.context.capabilities}")
         appendLine("Return a JSON object with fields flow_id(optional), graph, explanation, risk_flags.")
         appendLine("graph must match this Kotlin schema: ${com.devfest.server.model.FlowGraph.serializer().descriptor.serialName}")
-        appendLine("Blocks must use only these types: LocationExitTrigger, TimeScheduleTrigger, ManualQuickTrigger, TimeWindowCondition, BatteryGuardCondition, ContextMatchCondition, SendNotificationAction, SendSMSAction, HttpWebhookAction, ToggleWifiAction, PlaySoundAction, DelayAction, SetVariableAction, GetVariableBlock, BranchSelector.")
-        appendLine("Edges should reference block ids, include condition labels, and avoid infinite loops.")
+        
+        appendLine("AVAILABLE BLOCKS (Use these types exactly):")
+        appendLine("1. SENSORS:")
+        appendLine("   - Pedometer (params: threshold='10')")
+        appendLine("   - Camera (params: lens='front'|'back')")
+        appendLine("   - Location (params: accuracy='high'|'balanced'|'low')")
+        appendLine("2. TRIGGERS:")
+        appendLine("   - LocationExitTrigger (params: geofence, radiusMeters)")
+        appendLine("   - TimeScheduleTrigger (params: time, days)")
+        appendLine("   - ManualQuickTrigger")
+        appendLine("3. ACTIONS & CONDITIONS:")
+        appendLine("   - TimeWindowCondition (params: start, end)")
+        appendLine("   - BatteryGuardCondition (params: minPercent)")
+        appendLine("   - SendNotificationAction (params: title, message)")
+        appendLine("   - SendSMSAction (params: phone, body)")
+        appendLine("   - HttpWebhookAction (params: url, method, body)")
+        appendLine("   - ToggleWifiAction (params: enable='true'|'false')")
+        appendLine("   - PlaySoundAction (params: uri='content://...')")
+        appendLine("   - DelayAction (params: millis)")
+        
+        appendLine("Edges should reference block ids and include condition labels.")
     }
 
     companion object {

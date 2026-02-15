@@ -22,14 +22,23 @@ class MainActivity : ComponentActivity() {
                     modifier = Modifier.fillMaxSize(),
                     color = MaterialTheme.colorScheme.background
                 ) {
-                    var currentScreen by remember { mutableStateOf(Screen.Dashboard) }
+                    var currentScreen by remember { mutableStateOf<Screen>(Screen.Dashboard) }
 
                     when (currentScreen) {
                         Screen.Dashboard -> DashboardScreen(
                             onNavigateToChat = { currentScreen = Screen.Chat }
                         )
                         Screen.Chat -> ChatScreen(
-                            onBack = { currentScreen = Screen.Dashboard }
+                            onBack = { currentScreen = Screen.Dashboard },
+                            onNavigateToEditor = { flowId ->
+                                currentScreen = Screen.FlowEditor(flowId)
+                            }
+                        )
+                        is Screen.FlowEditor -> FlowEditorScreen(
+                            flowId = (currentScreen as Screen.FlowEditor).flowId,
+                            viewModel = androidx.lifecycle.viewmodel.compose.viewModel(), // Shared VM would be better, but this works if VM is scoped to Activity
+                            onBack = { currentScreen = Screen.Chat },
+                            onDeploy = { currentScreen = Screen.Dashboard }
                         )
                     }
                 }
@@ -38,7 +47,8 @@ class MainActivity : ComponentActivity() {
     }
 }
 
-enum class Screen {
-    Dashboard,
-    Chat
+sealed class Screen {
+    object Dashboard : Screen()
+    object Chat : Screen()
+    data class FlowEditor(val flowId: String) : Screen()
 }

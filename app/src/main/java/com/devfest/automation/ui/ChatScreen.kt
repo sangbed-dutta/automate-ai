@@ -27,6 +27,7 @@ import androidx.compose.material.icons.filled.SmartToy
 import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -58,7 +59,8 @@ import com.devfest.runtime.engine.FlowStepStatus
 @Composable
 fun ChatScreen(
     viewModel: AgentViewModel = viewModel(),
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onNavigateToEditor: (String) -> Unit
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val listState = rememberLazyListState()
@@ -110,7 +112,8 @@ fun ChatScreen(
                     message = message,
                     viewModel = viewModel,
                     isExecuting = uiState.execution.isNotEmpty() && message.flowId == uiState.executingFlowId,
-                    executionSteps = if (message.flowId == uiState.executingFlowId) uiState.execution else emptyList()
+                    executionSteps = if (message.flowId == uiState.executingFlowId) uiState.execution else emptyList(),
+                    onEdit = onNavigateToEditor
                 )
             }
 
@@ -216,7 +219,8 @@ fun ChatBubble(
     message: ChatMessage,
     viewModel: AgentViewModel,
     isExecuting: Boolean,
-    executionSteps: List<com.devfest.runtime.engine.FlowStepResult>
+    executionSteps: List<com.devfest.runtime.engine.FlowStepResult>,
+    onEdit: (String) -> Unit
 ) {
     val isUser = message.role == Role.USER
     val alignment = if (isUser) Alignment.End else Alignment.Start
@@ -268,6 +272,7 @@ fun ChatBubble(
                             FlowCard(
                                 graph = graph,
                                 onRun = { viewModel.runFlow(graph) },
+                                onEdit = { onEdit(graph.id) },
                                 isExecuting = isExecuting && viewModel.uiState.value.execution.isNotEmpty() && viewModel.uiState.value.execution.firstOrNull()?.blockId != null, // simplified check
                                 steps = executionSteps
                             )
@@ -291,24 +296,46 @@ fun ChatBubble(
 fun FlowCard(
     graph: com.devfest.runtime.model.FlowGraph,
     onRun: () -> Unit,
+    onEdit: () -> Unit,
     isExecuting: Boolean,
     steps: List<com.devfest.runtime.engine.FlowStepResult>
 ) {
     Card(
         colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surface),
-        modifier = Modifier.fillMaxWidth()
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp)
     ) {
-        Column(modifier = Modifier.padding(12.dp)) {
-            Text(
-                text = "✨ Generated Flow",
-                style = MaterialTheme.typography.labelSmall,
-                color = MaterialTheme.colorScheme.primary
-            )
-            Spacer(modifier = Modifier.height(4.dp))
+        Column(modifier = Modifier.padding(16.dp)) {
+            Row(verticalAlignment = Alignment.CenterVertically) {
+                Icon(
+                    imageVector = Icons.Default.SmartToy, // Sparkle icon equivalent
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text(
+                    text = "FLOW DRAFT",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.7f),
+                    fontWeight = FontWeight.Bold,
+                    letterSpacing = 1.sp
+                )
+                Spacer(modifier = Modifier.weight(1f))
+                Text(
+                    text = "High Confidence",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = com.devfest.automation.ui.theme.ActionGreen
+                )
+            }
+            
+            Spacer(modifier = Modifier.height(12.dp))
+            
             Text(
                 text = graph.title,
                 style = MaterialTheme.typography.titleMedium,
-                fontWeight = FontWeight.Bold
+                fontWeight = FontWeight.Bold,
+                color = MaterialTheme.colorScheme.onSurface
             )
             Text(
                 text = graph.explanation,
@@ -316,47 +343,78 @@ fun FlowCard(
                 color = MaterialTheme.colorScheme.onSurfaceVariant
             )
             
-            Spacer(modifier = Modifier.height(12.dp))
+            Spacer(modifier = Modifier.height(16.dp))
             
-            // Render the graph using Canvas view
-            com.devfest.automation.ui.components.FlowGraphView(
-                graph = graph,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(300.dp) // Fixed height for graph window
-                    .clip(RoundedCornerShape(8.dp))
-            )
-            
-            if (steps.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(8.dp))
-                Text("Execution Log:", style = MaterialTheme.typography.labelSmall)
-                steps.forEach { step ->
-                     val icon = when (step.status) {
-                        FlowStepStatus.SUCCESS -> "✅"
-                        FlowStepStatus.SKIPPED -> "⚠️"
-                        FlowStepStatus.FAILED -> "❌"
-                    }
+            // Vertical List of Blocks (Preview)
+            Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
+                graph.blocks.take(3).forEach { block ->
+                   Row(
+                       verticalAlignment = Alignment.CenterVertically,
+                       modifier = Modifier
+                           .fillMaxWidth()
+                           .background(MaterialTheme.colorScheme.background, RoundedCornerShape(8.dp))
+                           .padding(8.dp)
+                   ) {
+                       // Block Icon
+                       Icon(
+                           imageVector = when(block.type.category) {
+                               com.devfest.runtime.model.BlockCategory.TRIGGER -> Icons.Default.SmartToy
+                               com.devfest.runtime.model.BlockCategory.ACTION -> Icons.Default.SmartToy
+                               else -> Icons.Default.SmartToy
+                           }, // Placeholder icons
+                           contentDescription = null,
+                           tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                           modifier = Modifier.size(20.dp)
+                       )
+                       Spacer(modifier = Modifier.width(12.dp))
+                       Column {
+                           Text(
+                               text = block.type.name.lowercase().replaceFirstChar { it.uppercase() },
+                               style = MaterialTheme.typography.bodyMedium,
+                               fontWeight = FontWeight.Bold,
+                               color = MaterialTheme.colorScheme.onSurface
+                           )
+                           Text(
+                               text = block.params.entries.joinToString { "${it.key}: ${it.value}" }.take(30),
+                               style = MaterialTheme.typography.bodySmall,
+                               color = MaterialTheme.colorScheme.onSurfaceVariant,
+                               fontSize = 10.sp
+                           )
+                       }
+                       Spacer(modifier = Modifier.weight(1f))
+                       Text(
+                            text = block.type.category.name,
+                            style = MaterialTheme.typography.labelSmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.5f),
+                            fontSize = 8.sp
+                       )
+                   }
+                }
+                if (graph.blocks.size > 3) {
                     Text(
-                        text = "$icon ${step.blockId}: ${step.message}",
-                        style = MaterialTheme.typography.bodySmall,
-                        fontSize = 10.sp
+                        text = "+ ${graph.blocks.size - 3} more blocks...",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.padding(start = 8.dp)
                     )
                 }
             }
 
-            Spacer(modifier = Modifier.height(8.dp))
+            Spacer(modifier = Modifier.height(16.dp))
+            
             Button(
-                onClick = onRun,
+                onClick = onEdit, // "Generate Flow" goes to Editor
                 modifier = Modifier.fillMaxWidth(),
-                enabled = !isExecuting
+                colors = ButtonDefaults.buttonColors(containerColor = MaterialTheme.colorScheme.primary),
+                shape = RoundedCornerShape(8.dp)
             ) {
-                if (isExecuting) {
-                    CircularProgressIndicator(modifier = Modifier.size(16.dp), strokeWidth = 2.dp)
-                    Spacer(modifier = Modifier.width(8.dp))
-                    Text("Running...")
-                } else {
-                    Text("Run Flow ▶")
-                }
+                Icon(
+                    imageVector = Icons.Default.SmartToy,
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(8.dp))
+                Text("Generate Flow")
             }
         }
     }
