@@ -15,6 +15,7 @@ object FlowEngineFactory {
 
             BlockType.TIME_WINDOW_CONDITION to TimeWindowConditionHandler(),
             BlockType.BATTERY_GUARD_CONDITION to BatteryGuardHandler(),
+            BlockType.BATTERY_LEVEL_CONDITION to BatteryLevelHandler(context),
             BlockType.CONTEXT_MATCH_CONDITION to ContextMatchHandler(),
 
             BlockType.SEND_NOTIFICATION_ACTION to NotificationHandler(context),

@@ -21,7 +21,9 @@ class FlowValidator {
         "DelayAction",
         "SetVariableAction",
         "GetVariableBlock",
+        "GetVariableBlock",
         "BranchSelector",
+        "BatteryLevelCondition",
         // Sensors
         "Pedometer",
         "Camera",

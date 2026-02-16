@@ -21,6 +21,10 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.time.LocalTime
 import java.time.format.DateTimeFormatter
+import android.net.wifi.WifiManager
+import android.os.Build
+import android.provider.Settings
+import android.content.Intent
 
 private val TIME_FORMATTER: DateTimeFormatter = DateTimeFormatter.ofPattern("HH:mm")
 
@@ -160,15 +164,31 @@ class ToggleWifiHandler(
         input: FlowExecutionInput,
         state: FlowExecutionState
     ): FlowStepResult {
-        val cm = context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
-        val network = cm.activeNetwork
-        val capabilities = cm.getNetworkCapabilities(network)
-        val hasWifi = capabilities?.hasTransport(NetworkCapabilities.TRANSPORT_WIFI) == true
-        return FlowStepResult(
-            block.id,
-            FlowStepStatus.SUCCESS,
-            if (hasWifi) "Wi-Fi already active (demo only)" else "Requested Wi-Fi toggle (requires user action)"
-        )
+        val applicationContext = context.applicationContext
+        val wm = applicationContext.getSystemService(Context.WIFI_SERVICE) as WifiManager
+        val enable = block.params["enable"]?.toBoolean() ?: true // Default to ON if not specified, though usually we'd want 'toggle' or specific state
+
+        return try {
+            if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) {
+                // Legacy method for Android 9 and below
+                @Suppress("DEPRECATION")
+                val success = wm.setWifiEnabled(enable)
+                if (success) {
+                    FlowStepResult(block.id, FlowStepStatus.SUCCESS, "Wi-Fi state set to $enable")
+                } else {
+                    FlowStepResult(block.id, FlowStepStatus.FAILED, "Failed to set Wi-Fi state")
+                }
+            } else {
+                // Android 10+ restriction: Open Settings Panel
+                val panelIntent = Intent(Settings.Panel.ACTION_INTERNET_CONNECTIVITY).apply {
+                    addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                }
+                applicationContext.startActivity(panelIntent)
+                FlowStepResult(block.id, FlowStepStatus.SUCCESS, "Opened Internet Panel (Android 10+ restriction)")
+            }
+        } catch (e: Exception) {
+             FlowStepResult(block.id, FlowStepStatus.FAILED, "Error handling Wi-Fi: ${e.message}")
+        }
     }
 }
 

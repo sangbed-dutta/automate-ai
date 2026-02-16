@@ -50,6 +50,8 @@ enum class BlockType(val category: BlockCategory) {
     BATTERY_GUARD_CONDITION(BlockCategory.CONDITION),
     @SerialName("ContextMatchCondition")
     CONTEXT_MATCH_CONDITION(BlockCategory.CONDITION),
+    @SerialName("BatteryLevelCondition")
+    BATTERY_LEVEL_CONDITION(BlockCategory.CONDITION),
 
     @SerialName("SendNotificationAction")
     SEND_NOTIFICATION_ACTION(BlockCategory.ACTION),
