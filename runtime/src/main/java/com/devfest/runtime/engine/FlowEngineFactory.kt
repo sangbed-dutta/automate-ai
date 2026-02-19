@@ -1,7 +1,6 @@
 package com.devfest.runtime.engine
 
 import android.content.Context
-import androidx.lifecycle.ProcessLifecycleOwner
 import com.devfest.runtime.engine.blocks.*
 import com.devfest.runtime.engine.handlers.*
 import com.devfest.runtime.model.BlockType
@@ -12,11 +11,13 @@ object FlowEngineFactory {
             BlockType.LOCATION_EXIT_TRIGGER to TriggerHandler("Location exit detected"),
             BlockType.TIME_SCHEDULE_TRIGGER to TriggerHandler("Scheduled trigger fired"),
             BlockType.MANUAL_QUICK_TRIGGER to TriggerHandler("Manual trigger fired"),
+            BlockType.PATTERN_FAILURE_TRIGGER to TriggerHandler("Security pattern failed"),
 
             BlockType.TIME_WINDOW_CONDITION to TimeWindowConditionHandler(),
             BlockType.BATTERY_GUARD_CONDITION to BatteryGuardHandler(),
             BlockType.BATTERY_LEVEL_CONDITION to BatteryLevelHandler(context),
             BlockType.CONTEXT_MATCH_CONDITION to ContextMatchHandler(),
+            BlockType.UNLOCK_FAILED_CONDITION to UnlockFailedConditionHandler(),
 
             BlockType.SEND_NOTIFICATION_ACTION to NotificationHandler(context),
             BlockType.SEND_SMS_ACTION to SmsHandler(),
@@ -27,8 +28,7 @@ object FlowEngineFactory {
             // Sensor Blocks
             BlockType.PEDOMETER to StepCountHandler(context),
             BlockType.LOCATION to GetLocationHandler(context),
-            BlockType.LOCATION to GetLocationHandler(context),
-            BlockType.CAMERA to CameraCaptureHandler(context, ProcessLifecycleOwner.get()),
+            BlockType.CAMERA to CameraCaptureHandler(context),
             BlockType.SET_ALARM_ACTION to SetAlarmHandler(context),
 
             BlockType.DELAY_ACTION to DelayHandler(),

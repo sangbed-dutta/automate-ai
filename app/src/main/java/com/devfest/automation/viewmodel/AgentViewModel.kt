@@ -106,11 +106,18 @@ class AgentViewModel(
                 executingFlowId = graph.id,
                 statusMessage = "Running flow: ${graph.title}..."
             )
+
+            // Pattern-failure flows need trigger metadata so UnlockFailedConditionHandler passes
+            val metadata = if (graph.blocks.any { it.type == com.devfest.runtime.model.BlockType.PATTERN_FAILURE_TRIGGER }) {
+                demoMetadata() + ("trigger" to "pattern_failure")
+            } else {
+                demoMetadata()
+            }
             
             val execution = engine.execute(
                 graph,
                 FlowExecutionInput(
-                    metadata = demoMetadata()
+                    metadata = metadata
                 )
             )
             

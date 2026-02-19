@@ -189,9 +189,11 @@ class OpenAiGateway(
         appendLine("   - LocationExitTrigger (params: geofence, radiusMeters)")
         appendLine("   - TimeScheduleTrigger (params: time='HH:mm', days='[\"Mon\"]')")
         appendLine("   - ManualQuickTrigger")
+        appendLine("   - PatternFailureTrigger (params: optional label) — use when user wants to react to failed unlock/pattern (e.g. take photo on wrong pattern)")
         appendLine("3. ACTIONS & CONDITIONS:")
         appendLine("   - TimeWindowCondition (params: start='HH:mm', end='HH:mm')")
         appendLine("   - BatteryGuardCondition (params: minPercent='15')")
+        appendLine("   - UnlockFailedCondition (no params) — use after PatternFailureTrigger to ensure flow runs in failed-unlock context")
         appendLine("   - SendNotificationAction (params: title, message)")
         appendLine("   - SendSMSAction (params: phone, body)")
         appendLine("   - HttpWebhookAction (params: url, method, body)")
@@ -206,7 +208,13 @@ class OpenAiGateway(
     companion object {
         private const val SYSTEM_PROMPT =
             "You are an automation architect returning strict JSON for mobile automation flows. " +
-                "You must never include explanations outside the JSON payload."
+                "You must never include explanations outside the JSON payload. " +
+                "IMPORTANT: Keep flow titles short (2-3 words max). " +
+                "FLOW PATTERNS: When the user wants to capture a photo when someone fails the security pattern (or wrong unlock), " +
+                "use title='Login Security'. " +
+                "Build: (1) PatternFailureTrigger as the first block, (2) UnlockFailedCondition, (3) Camera with params lens='front', " +
+                "(4) optionally SendNotificationAction (e.g. title='Security', message='Photo captured after failed unlock'). " +
+                "Edges: trigger -> UnlockFailedCondition -> Camera -> Notification. Use lens='front' for intruder/selfie capture."
     }
 }
 

@@ -103,6 +103,26 @@ class ContextMatchHandler : FlowBlockHandler {
     }
 }
 
+/**
+ * Condition that passes when the flow was triggered by a failed unlock/pattern attempt.
+ * Expects execution metadata "trigger" = "pattern_failure" (set by app when starting flow from DeviceAdminReceiver).
+ */
+class UnlockFailedConditionHandler : FlowBlockHandler {
+    override suspend fun handle(
+        block: FlowBlock,
+        input: FlowExecutionInput,
+        state: FlowExecutionState
+    ): FlowStepResult {
+        val trigger = input.metadata["trigger"]?.lowercase()
+        val passed = trigger == "pattern_failure" || trigger == "unlock_failed"
+        return FlowStepResult(
+            blockId = block.id,
+            status = if (passed) FlowStepStatus.SUCCESS else FlowStepStatus.SKIPPED,
+            message = if (passed) "Unlock failed context confirmed" else "Not triggered by failed unlock (trigger=$trigger)"
+        )
+    }
+}
+
 class NotificationHandler(
     private val context: Context
 ) : FlowBlockHandler {

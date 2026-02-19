@@ -1,5 +1,10 @@
 package com.devfest.automation.ui
 
+import android.app.Activity
+import android.content.pm.PackageManager
+import android.Manifest
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,6 +43,11 @@ import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
@@ -46,9 +56,13 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import com.devfest.automation.ui.theme.ActionGreen
 import com.devfest.automation.ui.theme.ElectricBlue
 import com.devfest.automation.ui.theme.TriggerBlue
+import com.devfest.automation.util.DeviceAdminHelper
+import com.devfest.automation.util.FlowPermissionHelper
+import com.devfest.runtime.model.BlockType
 
 @Composable
 fun DashboardScreen(
@@ -253,7 +267,93 @@ fun SectionHeader(title: String, action: String? = null) {
 @Composable
 fun ActiveFlowsList(viewModel: com.devfest.automation.viewmodel.AgentViewModel) {
     val uiState = viewModel.uiState.collectAsState().value
-    
+    val context = LocalContext.current
+    val activity = context as? Activity
+    var pendingActivateFlowId by remember { mutableStateOf<String?>(null) }
+    var pendingActivateNeedsCamera by remember { mutableStateOf(false) }
+
+    val cameraLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { granted ->
+        if (pendingActivateFlowId != null) {
+            // Only activate if permission was granted
+            if (granted) {
+                viewModel.toggleFlow(pendingActivateFlowId!!, true)
+            }
+            pendingActivateFlowId = null
+            pendingActivateNeedsCamera = false
+        }
+    }
+
+    val deviceAdminLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) { result ->
+        if (result.resultCode == Activity.RESULT_OK && pendingActivateFlowId != null) {
+            val flowId = pendingActivateFlowId!!
+            val needsCamera = pendingActivateNeedsCamera &&
+                ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) != PackageManager.PERMISSION_GRANTED
+            if (needsCamera) {
+                cameraLauncher.launch(Manifest.permission.CAMERA)
+            } else {
+                viewModel.toggleFlow(flowId, true)
+                pendingActivateFlowId = null
+                pendingActivateNeedsCamera = false
+            }
+        } else {
+            pendingActivateFlowId = null
+            pendingActivateNeedsCamera = false
+        }
+    }
+
+    fun onToggleChecked(graph: com.devfest.runtime.model.FlowGraph, checked: Boolean) {
+        if (!checked) {
+            viewModel.toggleFlow(graph.id, false)
+            return
+        }
+        
+        val needsDeviceAdmin = FlowPermissionHelper.requiresDeviceAdmin(graph)
+        val needsCamera = FlowPermissionHelper.requiresCamera(graph)
+        val hasCamera = ContextCompat.checkSelfPermission(context, Manifest.permission.CAMERA) == PackageManager.PERMISSION_GRANTED
+        
+        // If flow needs device admin but we can't request it (no Activity), don't activate
+        if (needsDeviceAdmin && activity == null) {
+            // Could show a Snackbar here: "Cannot activate: needs device admin"
+            return
+        }
+        
+        // If flow doesn't need device admin, check camera and activate
+        if (!needsDeviceAdmin) {
+            if (needsCamera && !hasCamera) {
+                if (activity != null) {
+                    pendingActivateFlowId = graph.id
+                    pendingActivateNeedsCamera = true
+                    cameraLauncher.launch(Manifest.permission.CAMERA)
+                }
+                // No Activity to request camera - don't activate a flow that can't run
+                return
+            }
+            viewModel.toggleFlow(graph.id, true)
+            return
+        }
+        
+        // Flow needs device admin - check if enabled
+        if (!DeviceAdminHelper.isDeviceAdminEnabled(context)) {
+            pendingActivateFlowId = graph.id
+            pendingActivateNeedsCamera = needsCamera && !hasCamera
+            deviceAdminLauncher.launch(DeviceAdminHelper.createAddDeviceAdminIntent(context))
+            return
+        }
+        
+        // Device admin already enabled - check camera
+        if (needsCamera && !hasCamera && activity != null) {
+            pendingActivateFlowId = graph.id
+            pendingActivateNeedsCamera = true
+            cameraLauncher.launch(Manifest.permission.CAMERA)
+        } else {
+            viewModel.toggleFlow(graph.id, true)
+        }
+    }
+
     Column(
         modifier = Modifier.padding(horizontal = 16.dp),
         verticalArrangement = Arrangement.spacedBy(12.dp)
@@ -278,8 +378,8 @@ fun ActiveFlowsList(viewModel: com.devfest.automation.viewmodel.AgentViewModel) 
                     iconBg = if (isActive) Color(0xFFE0E7FF) else Color.LightGray,
                     iconTint = if (isActive) Color(0xFF6366F1) else Color.DarkGray,
                     isChecked = isActive,
-                    onToggle = { checked -> viewModel.toggleFlow(graph.id, checked) },
-                    showRunButton = graph.blocks.any { it.type == com.devfest.runtime.model.BlockType.MANUAL_QUICK_TRIGGER },
+                    onToggle = { checked -> onToggleChecked(graph, checked) },
+                    showRunButton = graph.blocks.any { it.type == BlockType.MANUAL_QUICK_TRIGGER },
                     onRun = { viewModel.runFlow(graph) }
                 )
             }

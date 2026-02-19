@@ -17,6 +17,8 @@ interface FlowRepository {
     suspend fun getFlow(id: String): FlowGraph?
     fun observeFlows(): Flow<List<Pair<FlowGraph, Boolean>>>
     suspend fun setActive(id: String, active: Boolean)
+    /** Returns all active (and published) flow graphs. Used e.g. by pattern-failure service. */
+    suspend fun getActiveFlowGraphs(): List<FlowGraph>
 }
 
 class DefaultFlowRepository(
@@ -55,6 +57,11 @@ class DefaultFlowRepository(
         // When setting active, we also implicitly publish (remove draft status)
         flowDao.updateStatus(id, active, isDraft = false)
     }
+
+    override suspend fun getActiveFlowGraphs(): List<FlowGraph> =
+        flowDao.getActiveFlows().map { entity ->
+            json.decodeFromString(FlowGraph.serializer(), entity.graphJson).copy(id = entity.id)
+        }
 
     private suspend fun persist(response: FlowGraphResponse) {
         val entity = FlowEntity(

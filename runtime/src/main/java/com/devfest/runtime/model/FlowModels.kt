@@ -43,6 +43,8 @@ enum class BlockType(val category: BlockCategory) {
     TIME_SCHEDULE_TRIGGER(BlockCategory.TRIGGER),
     @SerialName("ManualQuickTrigger")
     MANUAL_QUICK_TRIGGER(BlockCategory.TRIGGER),
+    @SerialName("PatternFailureTrigger")
+    PATTERN_FAILURE_TRIGGER(BlockCategory.TRIGGER),
 
     @SerialName("TimeWindowCondition")
     TIME_WINDOW_CONDITION(BlockCategory.CONDITION),
@@ -52,6 +54,8 @@ enum class BlockType(val category: BlockCategory) {
     CONTEXT_MATCH_CONDITION(BlockCategory.CONDITION),
     @SerialName("BatteryLevelCondition")
     BATTERY_LEVEL_CONDITION(BlockCategory.CONDITION),
+    @SerialName("UnlockFailedCondition")
+    UNLOCK_FAILED_CONDITION(BlockCategory.CONDITION),
 
     @SerialName("SendNotificationAction")
     SEND_NOTIFICATION_ACTION(BlockCategory.ACTION),
