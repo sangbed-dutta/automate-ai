@@ -4,6 +4,10 @@ plugins {
     kotlin("kapt")
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
 android {
     namespace = "com.devfest.data"
     compileSdk = 34

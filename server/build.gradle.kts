@@ -8,6 +8,15 @@ application {
     mainClass.set("com.devfest.server.ServerKt")
 }
 
+java {
+    toolchain {
+        languageVersion.set(JavaLanguageVersion.of(21))
+    }
+}
+
+kotlin {
+    jvmToolchain(21)
+}
 
 dependencies {
     implementation("io.ktor:ktor-server-core:2.3.8")

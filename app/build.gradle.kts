@@ -4,6 +4,10 @@ plugins {
     id("org.jetbrains.kotlin.plugin.serialization")
 }
 
+kotlin {
+    jvmToolchain(17)
+}
+
 android {
     namespace = "com.devfest.automation"
     compileSdk = 34
